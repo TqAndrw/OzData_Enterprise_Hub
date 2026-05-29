@@ -1,0 +1,33 @@
+-- Top san pham ban chay theo tung khu vuc
+-- Dua toan bo SKU => Hon loan
+-- Slice "Top 5", "Top 10" "Top 20" Linh hoat
+-- => Visual phai tu dong gom tat ca nhung thang con lai => "Others"
+-- Grand Total luon khop 100% voi thuc te => Cant use Top N filter default
+-- => Su dung Disconnected Table = Bang khong ket noi + Context Manipulation
+
+Dynamic Top N and Others Sales =
+--1. Doc gia tri N dang duoc User chon tu bang Parameter
+VAR TopNValue = SELECTEDVALUE(Parameter_TopN[N_Value])
+
+--2. Xac dinh xem dong hien tai tren bieu do co phai la dong Others hay khong
+VAR CurrentRow = SELECTEDVALUE(Dim_Product_Display[ProductName])
+
+--3. Tinh xep hang doanh thu cua san pham hien tai, lay tu bang goc dimproduct de bo "Others", ALL -> LOAI MOI FILTER, LAY ALL
+VAR RevenueRank = RANKX(ALL(Dim_Product[ProductName]), [Total Sales])
+
+-- Tam tinh doanh thu toan cong ty (Bo qua moi filter cua bang display)
+VAR TotalCompanySales = CALCULATE([Total Sales], REMOVEFILTERS(Dim_Product_Display))
+
+VAR TopNSales = CALCULATE([Total Sales], TOPN(TopNValue, ALL(Dim_Product[ProductName]), [Total Sales]))
+
+--4. Xay dung logic re nhanh (IF or SWITCH)
+RETURN
+    SWITCH(
+        TRUE(),
+        -- 1: La dong Others
+        CurrentRow = "Others", TotalCompanySales - TopNSales,
+        --2/ La san pham trong top N
+        RevenueRank <= TopNValie, [Total Sales],
+        --3. Loai bo cac sp con lai
+        BLANK()
+    )
